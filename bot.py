@@ -54,4 +54,44 @@ async def changeprefix(ctx, prefix):
     with open('prefixes.json', 'w') as f:
         json.dump(prefixes, f, indent=4)
 
-client.run(TOKEN)
+import discord
+
+import youtube_dl
+
+from discord.ext import commands
+
+ydl_opts = {
+    'format': 'bestaudio/best',
+    'postprocessors': [{
+        'key': 'FFmpegExtractAudio',
+        'preferredcodec': 'mp3',
+        'preferredquality': '192',
+    }],
+}   
+
+def endSong(guild, path):
+    os.remove(path)                                   
+
+@client.command(pass_context=True)
+async def play(ctx, url):
+    if not ctx.message.author.voice:
+        await ctx.send('you are not connected to a voice channel')
+        return
+
+    else:
+        channel = ctx.message.author.voice.channel
+
+    voice_client = await channel.connect()
+
+    guild = ctx.message.guild
+
+    with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+        file = ydl.extract_info(url, download=True)
+        path = str(file['title']) + "-" + str(file['id'] + ".mp3")
+
+    voice_client.play(discord.FFmpegPCMAudio(path), after=lambda x: endSong(guild, path))
+    voice_client.source = discord.PCMVolumeTransformer(voice_client.source, 1)
+
+    await ctx.send(f'**Music: **{url}')
+
+client.run()
